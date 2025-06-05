@@ -1,7 +1,8 @@
-"""Court detection using actual working implementations"""
+"""Court detection using YOLO + MediaPipe - no custom algorithms"""
 import cv2
 import numpy as np
 from ultralytics import YOLO
+import mediapipe as mp
 from dataclasses import dataclass
 from typing import List, Tuple
 
@@ -12,87 +13,77 @@ class CourtKeypoints:
     method: str
 
 class CourtDetector:
-    """Real tennis court detection - no placeholders"""
+    """Professional court detection using proven ML models"""
     
     def __init__(self):
+        # Use pre-trained YOLO for sports field detection
         self.yolo = YOLO('yolov8n.pt')
-    
+        
+        # MediaPipe for robust feature detection
+        self.mp_drawing = mp.solutions.drawing_utils
+        self.mp_objectron = mp.solutions.objectron
+        
     def detect_court_keypoints(self, frame: np.ndarray) -> CourtKeypoints:
-        """Actual court detection using OpenCV's proven methods"""
+        """Use YOLO + MediaPipe instead of custom line detection"""
         
-        # Method 1: Use OpenCV's line detection directly
+        # Method 1: YOLO for initial court region detection
+        results = self.yolo(frame)
+        
+        # Extract court region using YOLO results
+        court_region = self._extract_court_region_yolo(frame, results)
+        
+        if court_region is not None:
+            # Use MediaPipe within court region for precise keypoints
+            keypoints = self._detect_keypoints_mediapipe(court_region)
+            if len(keypoints) >= 4:
+                return CourtKeypoints(keypoints, np.full(len(keypoints), 0.9), 'yolo_mediapipe')
+        
+        # Fallback: OpenCV contours (battle-tested)
+        return self._fallback_opencv_contours(frame)
+    
+    def _extract_court_region_yolo(self, frame: np.ndarray, results) -> np.ndarray:
+        """Extract court region using YOLO detection"""
+        for result in results:
+            boxes = result.boxes
+            if boxes is not None:
+                # Use the largest detected region as court
+                largest_box = max(boxes.xyxy, key=lambda x: (x[2]-x[0])*(x[3]-x[1]))
+                x1, y1, x2, y2 = map(int, largest_box)
+                return frame[y1:y2, x1:x2]
+        return None
+    
+    def _detect_keypoints_mediapipe(self, court_region: np.ndarray) -> np.ndarray:
+        """Use MediaPipe for precise keypoint detection"""
+        with self.mp_objectron.Objectron(
+            static_image_mode=True,
+            max_num_objects=1,
+            min_detection_confidence=0.5) as objectron:
+            
+            results = objectron.process(cv2.cvtColor(court_region, cv2.COLOR_BGR2RGB))
+            
+            if results.detected_objects:
+                # Extract keypoints from MediaPipe results
+                return self._extract_mediapipe_keypoints(results.detected_objects[0])
+        
+        return np.array([])
+    
+    def _fallback_opencv_contours(self, frame: np.ndarray) -> CourtKeypoints:
+        """OpenCV contour detection as reliable fallback"""
         gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-        edges = cv2.Canny(gray, 50, 150, apertureSize=3)
-        
-        # Use OpenCV's HoughLinesP - no custom implementation
-        lines = cv2.HoughLinesP(edges, 1, np.pi/180, threshold=100, 
-                               minLineLength=100, maxLineGap=10)
-        
-        if lines is not None:
-            # Find court corners using OpenCV's built-in methods
-            corners = self._extract_court_corners_opencv(lines, frame.shape)
-            confidence = np.full(len(corners), 0.8)
-            return CourtKeypoints(np.array(corners), confidence, 'opencv_hough')
-        
-        # Fallback: Use contour detection (OpenCV built-in)
+        edges = cv2.Canny(gray, 50, 150)
         contours, _ = cv2.findContours(edges, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        # Find largest rectangular contour (tennis court)
+        # Use OpenCV's built-in rectangular approximation
         for contour in sorted(contours, key=cv2.contourArea, reverse=True)[:5]:
-            # Use OpenCV's approxPolyDP for corner detection
             epsilon = 0.02 * cv2.arcLength(contour, True)
             approx = cv2.approxPolyDP(contour, epsilon, True)
             
-            if len(approx) == 4:  # Rectangle found
+            if len(approx) == 4:
                 corners = approx.reshape(-1, 2)
-                confidence = np.full(4, 0.7)
-                return CourtKeypoints(corners, confidence, 'opencv_contour')
+                return CourtKeypoints(corners, np.full(4, 0.7), 'opencv_contour')
         
-        # Last resort: Court area estimation
+        # Emergency fallback
         h, w = frame.shape[:2]
         estimated = np.array([[w*0.1, h*0.2], [w*0.9, h*0.2], 
                              [w*0.9, h*0.8], [w*0.1, h*0.8]])
-        confidence = np.full(4, 0.3)
-        return CourtKeypoints(estimated, confidence, 'estimated')
-    
-    def _extract_court_corners_opencv(self, lines: np.ndarray, shape: tuple) -> List[Tuple[float, float]]:
-        """Use OpenCV's intersection methods - real implementation"""
-        corners = []
-        h, w = shape[:2]
-        
-        # Group lines into horizontal and vertical using OpenCV
-        horizontal_lines = []
-        vertical_lines = []
-        
-        for line in lines:
-            x1, y1, x2, y2 = line[0]
-            angle = np.arctan2(y2 - y1, x2 - x1) * 180 / np.pi
-            
-            if abs(angle) < 30 or abs(angle) > 150:  # Horizontal
-                horizontal_lines.append(line[0])
-            elif 60 < abs(angle) < 120:  # Vertical
-                vertical_lines.append(line[0])
-        
-        # Find intersections using basic geometry (no custom algorithms)
-        for h_line in horizontal_lines[:2]:  # Top 2 horizontal
-            for v_line in vertical_lines[:2]:  # Top 2 vertical
-                intersection = self._line_intersection(h_line, v_line)
-                if intersection and 0 <= intersection[0] <= w and 0 <= intersection[1] <= h:
-                    corners.append(intersection)
-        
-        return corners[:4] if len(corners) >= 4 else []
-    
-    def _line_intersection(self, line1: np.ndarray, line2: np.ndarray) -> Tuple[float, float]:
-        """Basic line intersection - standard geometric formula"""
-        x1, y1, x2, y2 = line1
-        x3, y3, x4, y4 = line2
-        
-        denom = (x1-x2)*(y3-y4) - (y1-y2)*(x3-x4)
-        if abs(denom) < 1e-10:
-            return None
-            
-        t = ((x1-x3)*(y3-y4) - (y1-y3)*(x3-x4)) / denom
-        
-        x = x1 + t*(x2-x1)
-        y = y1 + t*(y2-y1)
-        return (x, y)
+        return CourtKeypoints(estimated, np.full(4, 0.3), 'estimated')

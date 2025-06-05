@@ -1,13 +1,11 @@
-from .downloader import YouTubeVideoDownloader
-from .frame_extractor import M1OptimizedFrameExtractor  
-from .preprocessor import TennisVideoPreprocessor
-from .memory_manager import M1MemoryManager
-from .pipeline import TennisVideoAcquisitionPipeline
+# src/tennis/video_acquisition/__init__.py
+"""Video acquisition module."""
+from .pipeline import SimpleVideoAcquisitionPipeline
+
+# Alias SimpleVideoAcquisitionPipeline to TennisVideoAcquisitionPipeline
+# for a consistent public API.
+TennisVideoAcquisitionPipeline = SimpleVideoAcquisitionPipeline
 
 __all__ = [
-    'YouTubeVideoDownloader',
-    'M1OptimizedFrameExtractor', 
-    'TennisVideoPreprocessor',
-    'M1MemoryManager',
-    'TennisVideoAcquisitionPipeline'
+    "TennisVideoAcquisitionPipeline",
 ]

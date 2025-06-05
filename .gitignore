@@ -2,3 +2,5 @@
 data/
 .venv/
 uv.lock
+*.egg-info/
+*.pth

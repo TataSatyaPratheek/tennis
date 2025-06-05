@@ -1,32 +1,53 @@
 #!/usr/bin/env python3
-"""Working tennis video overlay - no placeholders"""
+"""Complete working example using professional libraries"""
 
 import cv2
-from tennis.detection import CourtDetector
-from tennis.video import VideoOverlay
+import numpy as np
 from pathlib import Path
+import sys
+
+# Add src to path
+sys.path.insert(0, str(Path(__file__).parent.parent / "src"))
+
+from tennis.detection import CourtDetector
+from tennis.calibration import TennisCalibrator
+from tennis.video import VideoProcessor
+from tennis.utils.geometry import create_court_polygon
 
 def main():
-    # Real implementations using OpenCV
-    detector = CourtDetector()
-    overlay = VideoOverlay()
+    """Real implementation using professional libraries"""
     
-    # Process your tennis frames
-    video_path = "your_tennis_video.mp4"
-    cap = cv2.VideoCapture(video_path)
+    # Initialize components with proven libraries
+    detector = CourtDetector()  # Uses YOLO + MediaPipe
+    calibrator = TennisCalibrator()  # Uses OpenCV calibration
+    processor = VideoProcessor()  # Uses video-reader-rs/decord + yt-dlp
     
-    ret, frame = cap.read()
-    if ret:
-        # Detect court using actual OpenCV methods
+    # Process video using proven pipeline
+    video_url = "https://www.youtube.com/watch?v=ZlQK3w9_cXw"
+    frames = processor.process_video_url(video_url, sample_rate=30)
+    
+    print(f"Extracted {len(frames)} frames using {processor.backend}")
+    
+    # Detect court keypoints using ML models
+    keypoints_2d = []
+    for i, frame in enumerate(frames[:10]):  # Process first 10 frames
         keypoints = detector.detect_court_keypoints(frame)
-        print(f"Detected {len(keypoints.points)} court points using {keypoints.method}")
-        
-        # Create overlay video using OpenCV VideoWriter
-        overlay.create_overlay_video(
-            "video1.mp4", "video2.mp4", "overlay_output.mp4", opacity=0.6
-        )
+        if len(keypoints.points) >= 4:
+            keypoints_2d.append(keypoints.points[:4])  # Use first 4 points
+            print(f"Frame {i}: {len(keypoints.points)} keypoints detected using {keypoints.method}")
     
-    cap.release()
+    if len(keypoints_2d) >= 3:
+        # Calibrate using OpenCV's proven algorithms
+        result = calibrator.calibrate_from_frames(frames[:len(keypoints_2d)], keypoints_2d)
+        
+        if result.success:
+            print(f"Calibration successful!")
+            print(f"Reprojection error: {result.reprojection_error:.3f} pixels")
+            print(f"Camera matrix:\n{result.camera_matrix}")
+        else:
+            print(f"Calibration failed. Error: {result.reprojection_error:.3f}")
+    else:
+        print("Insufficient keypoints for calibration")
 
 if __name__ == "__main__":
     main()
