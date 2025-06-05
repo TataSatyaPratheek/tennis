@@ -2,18 +2,33 @@
 name = "tennis"
 version = "0.1.0"
 dependencies = [
-  "opencv-python",
-  "numpy",
+  # Computer Vision & ML
+  "ultralytics",          # YOLO for court detection
+  "mediapipe",            # Pose/object detection
+  "opencv-python",        # Standard calibration
+  "kornia",               # Differentiable CV operations
+  "torch",
+  "torchvision",
+  "torchaudio",
   "scikit-image",
   "pillow",
-  "matplotlib",
+  "numpy",
+
+  # Video & Data Processing
+  "video-reader-rs>=0.2.5",  # Fast video reading, macOS-arm64 & Python 3.12 compatible
+  "yt-dlp",                  # Video downloading
+  "pytubefix",
   "moviepy",
   "imageio[ffmpeg]",
+
+  # Geometry & Visualization
+  "shapely",               # Geometric operations
+  "matplotlib",            # Plotting (minimal)
+
+  # Development Tools
   "pytest",
   "black",
   "flake8",
   "ipython",
   "line_profiler",
-  "pytubefix>=9.1.1",
-  "yt-dlp>=2025.5.22",
 ]
