@@ -1,0 +1,19 @@
+[project]
+name = "tennis"
+version = "0.1.0"
+dependencies = [
+  "opencv-python",
+  "numpy",
+  "scikit-image",
+  "pillow",
+  "matplotlib",
+  "moviepy",
+  "imageio[ffmpeg]",
+  "pytest",
+  "black",
+  "flake8",
+  "ipython",
+  "line_profiler",
+  "pytubefix>=9.1.1",
+  "yt-dlp>=2025.5.22",
+]
