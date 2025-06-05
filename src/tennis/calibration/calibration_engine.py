@@ -8,6 +8,7 @@ import json
 
 from .keypoint_detector import TennisCourtKeypointDetector, KeypointDetectionResult, DetectedKeypoint
 from .pattern_manager import CalibrationPatternManager
+from .indoor_court_detector import IndoorTennisCourtKeypointDetector
 
 @dataclass
 class CalibrationResult:
@@ -33,11 +34,17 @@ class CalibrationValidation:
     overall_quality_score: float
 
 class TennisCourtCalibrationEngine:
-    """Enhanced calibration engine with better detection"""
+    """Complete camera calibration pipeline for tennis court footage"""
     
-    def __init__(self, pattern_manager: CalibrationPatternManager):
+    def __init__(self, pattern_manager: CalibrationPatternManager, use_indoor_detector: bool = True):
         self.pattern_manager = pattern_manager
-        self.keypoint_detector = TennisCourtKeypointDetector(pattern_manager)  # Use enhanced detector
+        
+        # Choose detector based on court type
+        if use_indoor_detector:
+            self.keypoint_detector = IndoorTennisCourtKeypointDetector(pattern_manager)
+        else:
+            self.keypoint_detector = TennisCourtKeypointDetector(pattern_manager)
+            
         self.logger = logging.getLogger(__name__)
         
         # Relaxed calibration parameters
